@@ -1,12 +1,13 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { getPlaylistDetails, getPlaylistTracks, searchTracks, addTrackToPlaylist, removeTrackFromPlaylist, reorderPlaylistTracks } from '$lib/spotify/server';
+import { getPlaylistDetails, getPlaylistTracks, searchTracks, addTrackToPlaylist, removeTrackFromPlaylist, reorderPlaylistTracks, getCurrentUser } from '$lib/spotify/server';
 
 export const load: PageServerLoad = async ({ params }) => {
     try {
-        const [playlist, tracks] = await Promise.all([
+        const [playlist, tracks, currentUser] = await Promise.all([
             getPlaylistDetails(params.id),
-            getPlaylistTracks(params.id)
+            getPlaylistTracks(params.id),
+            getCurrentUser()
         ]);
         
         return {
@@ -17,6 +18,7 @@ export const load: PageServerLoad = async ({ params }) => {
                 followers: playlist.followers?.total || 0,
                 imageUrl: playlist.images?.[0]?.url || null,
                 owner: playlist.owner?.display_name || playlist.owner?.id || 'Unknown',
+                canEdit: playlist.owner?.id === currentUser.id,
                 tracks: tracks.items.map((item, index) => ({
                     id: item.track.id,
                     name: item.track.name,

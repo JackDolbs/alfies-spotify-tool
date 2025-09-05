@@ -9,6 +9,8 @@
         TableHeader,
         TableRow,
     } from "$lib/components/ui/table";
+    import LockIcon from "@lucide/svelte/icons/lock";
+    import UnlockIcon from "@lucide/svelte/icons/unlock";
     import SearchIcon from "@lucide/svelte/icons/search";
     import { goto } from "$app/navigation";
     import type { PageData } from './$types';
@@ -67,22 +69,23 @@
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead class="w-[50%]">Name</TableHead>
-                    <TableHead class="text-right">Tracks</TableHead>
-                    <TableHead class="text-right">Saves</TableHead>
-                    <TableHead class="text-right">Creator</TableHead>
+                                                    <TableHead class="w-[50%]">Name</TableHead>
+                                <TableHead class="text-right">Tracks</TableHead>
+                                <TableHead class="text-right">Saves</TableHead>
+                                <TableHead class="text-right">Creator</TableHead>
+                                <TableHead class="w-[48px] text-center">Access</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {#each filteredPlaylists as playlist}
                     <TableRow class="hover:bg-muted/50">
-                        <td colspan="4" class="p-0">
+                        <td colspan="5" class="p-0">
                             <button 
                                 type="button"
                                 class="w-full text-left cursor-pointer"
                                 on:click|preventDefault={() => goto(`/app/playlist/${playlist.id}`)}
                             >
-                                <div class="grid grid-cols-[50%_1fr_1fr_1fr] items-center">
+                                                                           <div class="grid grid-cols-[50%_1fr_1fr_1fr_48px] items-center gap-4">
                                     <div class="p-4">
                                         <div class="flex items-center gap-3">
                                             {#if playlist.imageUrl}
@@ -105,16 +108,23 @@
                                     <div class="p-4 text-right">
                                         {playlist.saves.toLocaleString()} saves
                                     </div>
-                                    <div class="p-4 text-right">
-                                        {playlist.owner}
-                                    </div>
+                                                                               <div class="p-4 text-right">
+                                               {playlist.owner}
+                                           </div>
+                                           <div class="p-4 flex items-center justify-center">
+                                               {#if playlist.canEdit}
+                                                   <UnlockIcon class="h-4 w-4 text-green-500" />
+                                               {:else}
+                                                   <LockIcon class="h-4 w-4 text-orange-500" />
+                                               {/if}
+                                           </div>
                                 </div>
                             </button>
                         </td>
                     </TableRow>
                 {:else}
                     <TableRow>
-                        <TableCell class="h-24 text-center" {...{ colspan: 4 }}>
+                        <TableCell class="h-24 text-center" {...{ colspan: 5 }}>
                             <div class="text-sm text-muted-foreground">
                                 {#if searchQuery}
                                     No playlists found matching "{searchQuery}"

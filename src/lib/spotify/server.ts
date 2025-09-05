@@ -138,6 +138,10 @@ export async function createPlaylist(name: string, description?: string) {
     });
 }
 
+export async function getCurrentUser() {
+    return await spotifyFetch('/me');
+}
+
 export async function getPlaylistDetails(playlistId: string) {
     return await spotifyFetch(`/playlists/${playlistId}`);
 }
