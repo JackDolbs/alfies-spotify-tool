@@ -506,39 +506,13 @@
                 <CardContent class="p-0 flex-1 overflow-hidden">
                     <div class="divide-y h-full overflow-y-auto">
                         {#if selectedTracks.length === 0}
-                            <div class="h-full flex flex-col p-6 space-y-6">
-                                <!-- Status message -->
-                                <div class="space-y-2">
-                                    <div class="text-sm font-medium text-muted-foreground">No tracks added yet</div>
-                                    <p class="text-sm text-muted-foreground">
-                                        Search and add tracks from the left panel to build your playlist
-                                    </p>
-                                </div>
-                                
-                                <!-- Tips section -->
+                            <div class="h-full p-6">
                                 <div class="space-y-3">
-                                    <div class="text-sm font-medium text-foreground/70">How to add tracks:</div>
+                                    <div class="text-base font-medium text-muted-foreground">No tracks added yet</div>
                                     <div class="space-y-2 text-sm text-muted-foreground">
-                                        <div class="flex items-start gap-2">
-                                            <div class="text-green-500 mt-0.5 font-bold">1.</div>
-                                            <span>Search by song title, artist, or album name</span>
-                                        </div>
-                                        <div class="flex items-start gap-2">
-                                            <div class="text-blue-500 mt-0.5 font-bold">2.</div>
-                                            <span>Click the + button next to tracks to add them</span>
-                                        </div>
-                                        <div class="flex items-start gap-2">
-                                            <div class="text-purple-500 mt-0.5 font-bold">3.</div>
-                                            <span>Added tracks will appear here in order</span>
-                                        </div>
+                                        <p>Search and add tracks from the left panel to build your playlist</p>
+                                        <p class="text-xs">💡 You can also create an empty playlist and add tracks later</p>
                                     </div>
-                                </div>
-
-                                <!-- Additional info -->
-                                <div class="pt-4 border-t border-muted/20">
-                                    <p class="text-xs text-muted-foreground">
-                                        💡 You can also create an empty playlist and add tracks later
-                                    </p>
                                 </div>
                             </div>
                         {:else}
