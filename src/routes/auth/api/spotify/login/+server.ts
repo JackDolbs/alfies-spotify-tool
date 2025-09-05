@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 		redirect_uri: import.meta.env.VITE_SPOTIFY_REDIRECT_URI,
 		code_challenge_method: 'S256',
 		code_challenge: codeChallenge,
-		scope: 'playlist-modify-private playlist-read-private',
+		scope: 'playlist-modify-private playlist-read-private ugc-image-upload',
 		state
 	});
 

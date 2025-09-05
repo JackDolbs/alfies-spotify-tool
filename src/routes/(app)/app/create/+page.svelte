@@ -28,6 +28,8 @@
     function resetForm() {
         name = '';
         description = '';
+        playlistImage = null;
+        imagePreview = null;
         creating = false;
         selectedTracks = [];
         searchQuery = '';
@@ -357,8 +359,15 @@
                         <form 
                             method="POST" 
                             action="?/create"
-                            use:enhance={() => {
+                            enctype="multipart/form-data"
+                            use:enhance={({ formData }) => {
                                 creating = true;
+                                
+                                // Add the image file to formData if it exists
+                                if (playlistImage) {
+                                    formData.append('playlist-image', playlistImage);
+                                }
+                                
                                 return async ({ result, update }) => {
                                     if (result.type === 'redirect') {
                                         await update();

@@ -145,3 +145,43 @@ export async function reorderPlaylistTrack(playlistId: string, oldPosition: numb
 export async function searchTracks(query: string) {
     return await spotifyFetch(`/search?type=track&q=${encodeURIComponent(query)}&limit=5`);
 }
+
+export async function uploadPlaylistCover(playlistId: string, imageBase64: string) {
+    // Get tokens for manual fetch since we need different headers
+    const { accessToken, refreshToken } = await getSpotifyTokens();
+    
+    // Try the request with the current access token
+    let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/images`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'image/jpeg'
+        },
+        body: imageBase64
+    });
+
+    // If unauthorized, try refreshing the token
+    if (response.status === 401) {
+        console.log('Token expired for image upload, refreshing...');
+        const newAccessToken = await refreshSpotifyToken(refreshToken);
+        
+        // Retry the request with the new token
+        response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/images`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${newAccessToken}`,
+                'Content-Type': 'image/jpeg'
+            },
+            body: imageBase64
+        });
+    }
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Spotify image upload error (${response.status}):`, errorText);
+        throw new Error(`Failed to upload playlist cover: ${response.status} ${response.statusText}`);
+    }
+
+    // This endpoint returns no content on success
+    return true;
+}
