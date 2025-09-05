@@ -1,38 +1,87 @@
-# sv
+# Alfie's Spotify Playlist Manager
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A lightweight SvelteKit application for managing a Spotify playlist. This microservice allows for playlist track management, including adding songs via search and reordering tracks through position inputs.
 
-## Creating a project
+## Prerequisites
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Node.js (v18 or higher)
+- npm/pnpm/yarn
+- Spotify Developer Account
+- Access to the PocketBase instance for admin
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Environment Variables
 
-# create a new project in my-app
-npx sv create my-app
+Create a `.env` file in the root directory with:
+
+```env
+SPOTIFY_CLIENT_ID=your_client_id
+SPOTIFY_CLIENT_SECRET=your_client_secret
+SPOTIFY_REDIRECT_URI=http://localhost:5173/callback
+POCKETBASE_URL=your_pocketbase_url
+PLAYLIST_ID=your_spotify_playlist_id
 ```
 
-## Developing
+## Getting Started
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/spotify-playlist-manager.git
+cd spotify-playlist-manager
+```
 
-```sh
+2. Install dependencies:
+```bash
+npm install
+# or
+pnpm install
+# or
+yarn
+```
+
+3. Set up Spotify App:
+   - Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+   - Create a new application
+   - Add `http://localhost:5173/callback` to Redirect URIs
+   - Copy Client ID and Client Secret to your `.env` file
+
+4. Start the development server:
+```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+# or
+pnpm dev
+# or
+yarn dev
 ```
 
-## Building
+The app will be available at `http://localhost:5173`
 
-To create a production version of your app:
+## First-Time Setup
 
-```sh
+After deployment, you must:
+
+1. Create a superuser account via the signup/auth flow
+2. Connect your Spotify account
+3. Set the target playlist ID in your environment variables
+
+## Building for Production
+
+```bash
 npm run build
+# or
+pnpm build
+# or
+yarn build
 ```
 
-You can preview the production build with `npm run preview`.
+Preview the production build:
+```bash
+npm run preview
+```
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Tech Stack
+
+- SvelteKit (TypeScript)
+- TailwindCSS
+- Shadcn UI Components
+- PocketBase (via API)
+- Spotify Web API
