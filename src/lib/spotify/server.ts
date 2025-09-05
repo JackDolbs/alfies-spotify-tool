@@ -1,7 +1,7 @@
 import PocketBase from 'pocketbase';
 import type { SpotifyTrack, SpotifyPlaylist } from './types';
 
-async function getSpotifyToken() {
+async function getSpotifyTokens() {
     const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
     
     await pb.admins.authWithPassword(
@@ -12,26 +12,82 @@ async function getSpotifyToken() {
     const record = await pb.collection(import.meta.env.VITE_POCKETBASE_COLLECTION)
         .getOne(import.meta.env.VITE_POCKETBASE_RECORD_ID);
 
-    return record.spotify_access_token;
+    return {
+        accessToken: record.spotify_access_token,
+        refreshToken: record.spotify_refresh_token
+    };
+}
+
+async function refreshSpotifyToken(refreshToken: string) {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${Buffer.from(
+                `${import.meta.env.VITE_SPOTIFY_CLIENT_ID}:${import.meta.env.VITE_SPOTIFY_CLIENT_SECRET}`
+            ).toString('base64')}`
+        },
+        body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to refresh token');
+    }
+
+    const data = await response.json();
+    
+    // Update tokens in PocketBase
+    const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
+    await pb.admins.authWithPassword(
+        import.meta.env.VITE_POCKETBASE_ADMIN_EMAIL,
+        import.meta.env.VITE_POCKETBASE_ADMIN_PASSWORD
+    );
+
+    await pb.collection(import.meta.env.VITE_POCKETBASE_COLLECTION).update(
+        import.meta.env.VITE_POCKETBASE_RECORD_ID,
+        {
+            spotify_access_token: data.access_token,
+            spotify_refresh_token: data.refresh_token || refreshToken // Refresh token might not be returned
+        }
+    );
+
+    return data.access_token;
 }
 
 async function spotifyFetch(endpoint: string, options: RequestInit = {}) {
-    const token = await getSpotifyToken();
-    const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
+    // Get both tokens
+    const { accessToken, refreshToken } = await getSpotifyTokens();
+    
+    // Try the request with the current access token
+    let response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
         ...options,
         headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
             ...options.headers
         }
     });
 
+    // If unauthorized, try refreshing the token
+    if (response.status === 401) {
+        console.log('Token expired, refreshing...');
+        const newAccessToken = await refreshSpotifyToken(refreshToken);
+        
+        // Retry the request with the new token
+        response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
+            ...options,
+            headers: {
+                'Authorization': `Bearer ${newAccessToken}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
     if (!response.ok) {
-        if (response.status === 401) {
-            // Token expired, refresh it
-            // TODO: Implement token refresh
-            throw new Error('Token expired');
-        }
         throw new Error(`Spotify API error: ${response.statusText}`);
     }
 
