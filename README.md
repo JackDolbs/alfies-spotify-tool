@@ -18,6 +18,7 @@ SPOTIFY_CLIENT_ID=your_client_id
 SPOTIFY_CLIENT_SECRET=your_client_secret
 SPOTIFY_REDIRECT_URI=http://localhost:5173/callback
 POCKETBASE_URL=your_pocketbase_url
+POCKETBASE_COLLECTION=your_pocketbase_collection
 PLAYLIST_ID=your_spotify_playlist_id
 ```
 

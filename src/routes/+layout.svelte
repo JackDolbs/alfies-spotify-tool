@@ -1,12 +1,17 @@
 <script lang="ts">
-	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
+    import '../app.css';
+    import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
+    import PocketBase from 'pocketbase';
 
-	let { children } = $props();
+    const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
+
+    onMount(() => {
+        // Check if we're on an app route and not authenticated
+        if (window.location.pathname.startsWith('/app') && !pb.authStore.isValid) {
+            goto('/auth');
+        }
+    });
 </script>
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
-
-{@render children?.()}
+<slot />
