@@ -6,6 +6,7 @@
     import { Input } from "$lib/components/ui/input";
     import { Card, CardContent, CardHeader, CardTitle } from "$lib/components/ui/card";
     import { ScrollArea } from "$lib/components/ui/scroll-area";
+    import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
     import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
     import ChevronUpIcon from "@lucide/svelte/icons/chevron-up";
     import type { PageData, ActionData } from './$types';
@@ -595,115 +596,133 @@
                 <CardTitle>Tracks ({data.playlist.tracks.length})</CardTitle>
             </CardHeader>
             <CardContent class="p-0">
-                <div class="divide-y">
-                    {#each data.playlist.tracks as track, i}
-                        <div 
-                            class="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors {dragOverIndex === i ? 'border-t-2 border-primary' : ''} {draggedTrackId === track.id ? 'opacity-50' : ''}"
-                            draggable={data.playlist.canEdit}
-                            role="listitem"
-                            on:dragstart={(e) => data.playlist.canEdit && handleDragStart(e, track.id)}
-                            on:dragover={(e) => data.playlist.canEdit && handleDragOver(e, i)}
-                            on:dragleave={handleDragLeave}
-                            on:drop={(e) => data.playlist.canEdit && handleDrop(e, i)}
-                            on:dragend={handleDragEnd}
-                        >
-                            <!-- Drag Handle -->
+                <Table>
+                    <TableHeader>
+                        <TableRow>
                             {#if data.playlist.canEdit}
-                                <div class="text-lg text-muted-foreground cursor-grab active:cursor-grabbing" title="Drag to reorder">
-                                    ⋮⋮
-                                </div>
-
-                                <!-- Position & Controls -->
-                                <div class="flex items-center gap-2">
-                                    {#if editingTrackId === track.id}
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max={data.playlist.tracks.length}
-                                            value={i + 1}
-                                            class="w-8 h-6 text-sm text-center border border-input rounded bg-background focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
-                                            on:blur={(e) => {
-                                                // Only handle blur if Enter wasn't just pressed
-                                                setTimeout(() => {
-                                                    if (!isProcessingReorder) {
+                                <TableHead class="w-[50px]">Order</TableHead>
+                            {/if}
+                            <TableHead class="w-[50px]">#</TableHead>
+                            <TableHead>Title</TableHead>
+                            <TableHead class="hidden md:table-cell">Album</TableHead>
+                            <TableHead class="hidden md:table-cell">Duration</TableHead>
+                            {#if data.playlist.canEdit}
+                                <TableHead class="w-[50px]">Actions</TableHead>
+                            {/if}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {#each data.playlist.tracks as track, i}
+                            <TableRow
+                                draggable={data.playlist.canEdit}
+                                on:dragstart={(e) => data.playlist.canEdit && handleDragStart(e, track.id)}
+                                on:dragover={(e) => data.playlist.canEdit && handleDragOver(e, i)}
+                                on:dragleave={handleDragLeave}
+                                on:drop={(e) => data.playlist.canEdit && handleDrop(e, i)}
+                                on:dragend={handleDragEnd}
+                                class="{dragOverIndex === i ? 'border-t-2 border-primary' : ''} {draggedTrackId === track.id ? 'opacity-50' : ''}"
+                            >
+                                {#if data.playlist.canEdit}
+                                    <TableCell>
+                                        <div class="text-lg text-muted-foreground cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                                            ⋮⋮
+                                        </div>
+                                    </TableCell>
+                                {/if}
+                                <TableCell>
+                                    {#if data.playlist.canEdit}
+                                        {#if editingTrackId === track.id}
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max={data.playlist.tracks.length}
+                                                value={i + 1}
+                                                class="w-12 h-8 text-sm text-center border border-input rounded bg-background focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
+                                                on:blur={(e) => {
+                                                    setTimeout(() => {
+                                                        if (!isProcessingReorder) {
+                                                            handlePositionEdit(e, track.id, i + 1);
+                                                        }
+                                                    }, 10);
+                                                }}
+                                                on:keydown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        const target = e.target as HTMLInputElement;
+                                                        target.blur();
                                                         handlePositionEdit(e, track.id, i + 1);
+                                                    } else if (e.key === 'Escape') {
+                                                        finishEditing();
                                                     }
-                                                }, 10);
-                                            }}
-                                            on:keydown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    const target = e.target as HTMLInputElement;
-                                                    target.blur(); // Remove focus first
-                                                    handlePositionEdit(e, track.id, i + 1);
-                                                } else if (e.key === 'Escape') {
-                                                    finishEditing();
-                                                }
-                                            }}
-                                        />
+                                                }}
+                                            />
+                                        {:else}
+                                            <button
+                                                type="button"
+                                                class="w-12 h-8 text-sm text-center font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded cursor-pointer transition-colors"
+                                                on:click={() => startEditing(track.id)}
+                                                title="Click to edit position"
+                                            >
+                                                {i + 1}
+                                            </button>
+                                        {/if}
                                     {:else}
-                                        <button
-                                            type="button"
-                                            class="w-8 h-6 text-sm text-center font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded cursor-pointer transition-colors flex items-center justify-center border-0 bg-transparent"
-                                            on:click={() => startEditing(track.id)}
-                                            title="Click to edit position"
-                                        >
-                                            {i + 1}
-                                        </button>
+                                        <span class="text-sm text-muted-foreground">{i + 1}</span>
                                     {/if}
-                                </div>
-                            {:else}
-                                <div class="w-8 h-6 text-sm text-center font-medium text-muted-foreground flex items-center justify-center">
-                                    {i + 1}
-                                </div>
-                            {/if}
-
-                            <!-- Track Info -->
-                            {#if track.imageUrl}
-                                <img 
-                                    src={track.imageUrl} 
-                                    alt={track.name}
-                                    class="w-12 h-12 object-cover rounded"
-                                />
-                            {:else}
-                                <div class="w-12 h-12 bg-muted rounded flex items-center justify-center text-sm">
-                                    🎵
-                                </div>
-                            {/if}
-
-                            <div class="flex-1 min-w-0">
-                                <div class="font-medium truncate">{track.name}</div>
-                                <div class="text-sm text-muted-foreground truncate">{track.artists}</div>
-                            </div>
-
-                            <div class="text-sm text-muted-foreground hidden md:block">
-                                {formatDuration(track.duration)}
-                            </div>
-
-                            <!-- Actions -->
-                            {#if data.playlist.canEdit}
-                                <form method="POST" action="?/removeTrack" use:enhance>
-                                    <input type="hidden" name="trackUri" value={track.uri} />
-                                    <input type="hidden" name="position" value={i} />
-                                    <button
-                                        type="submit"
-                                        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-destructive/10 h-9 w-9 text-destructive shrink-0 cursor-pointer"
-                                        title="Remove from playlist"
-                                    >
-                                        ✕
-                                    </button>
-                                </form>
-                            {/if}
-                        </div>
-                    {/each}
-                    
-                    {#if data.playlist.tracks.length === 0}
-                        <div class="p-8 text-center text-muted-foreground">
-                            <div class="text-2xl mb-2">🎵</div>
-                            <div class="text-sm">No tracks in this playlist yet</div>
-                        </div>
-                    {/if}
-                </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div class="flex items-center gap-3">
+                                        {#if track.imageUrl}
+                                            <img 
+                                                src={track.imageUrl} 
+                                                alt={track.name}
+                                                class="w-10 h-10 object-cover rounded"
+                                            />
+                                        {:else}
+                                            <div class="w-10 h-10 bg-muted rounded flex items-center justify-center text-sm">
+                                                🎵
+                                            </div>
+                                        {/if}
+                                        <div class="min-w-0">
+                                            <div class="font-medium truncate">{track.name}</div>
+                                            <div class="text-sm text-muted-foreground truncate">{track.artists}</div>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="hidden md:table-cell text-muted-foreground">
+                                    {track.album}
+                                </TableCell>
+                                <TableCell class="hidden md:table-cell text-muted-foreground">
+                                    {formatDuration(track.duration)}
+                                </TableCell>
+                                {#if data.playlist.canEdit}
+                                    <TableCell>
+                                        <form method="POST" action="?/removeTrack" use:enhance>
+                                            <input type="hidden" name="trackUri" value={track.uri} />
+                                            <input type="hidden" name="position" value={i} />
+                                            <button
+                                                type="submit"
+                                                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-destructive/10 h-9 w-9 text-destructive"
+                                                title="Remove from playlist"
+                                            >
+                                                ✕
+                                            </button>
+                                        </form>
+                                    </TableCell>
+                                {/if}
+                            </TableRow>
+                        {/each}
+                        
+                        {#if data.playlist.tracks.length === 0}
+                            <TableRow>
+                                <TableCell colspan={data.playlist.canEdit ? 6 : 4} class="text-center py-8">
+                                    <div class="text-2xl mb-2">🎵</div>
+                                    <div class="text-sm text-muted-foreground">No tracks in this playlist yet</div>
+                                </TableCell>
+                            </TableRow>
+                        {/if}
+                    </TableBody>
+                </Table>
             </CardContent>
         </Card>
     </div>

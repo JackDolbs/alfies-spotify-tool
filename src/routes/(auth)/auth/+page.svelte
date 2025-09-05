@@ -5,7 +5,7 @@
 <div class="flex min-h-screen items-center justify-center">
     <div class="w-full max-w-md space-y-8 p-8">
         <div class="text-center">
-            <h1 class="text-4xl font-bold">Spotify Playlist Manager</h1>
+            <h1 class="text-xl font-bold">DECENT</h1>
             <p class="mt-2 text-gray-600">Connect your Spotify account to get started</p>
         </div>
 
