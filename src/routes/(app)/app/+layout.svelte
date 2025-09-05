@@ -32,7 +32,7 @@
         </div>
     </header>
 
-    <main>
+    <main class="my-10">
         <slot />
     </main>
 </div>
