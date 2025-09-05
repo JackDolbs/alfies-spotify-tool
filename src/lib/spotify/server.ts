@@ -143,7 +143,7 @@ export async function reorderPlaylistTrack(playlistId: string, oldPosition: numb
 }
 
 export async function searchTracks(query: string) {
-    return await spotifyFetch(`/search?type=track&q=${encodeURIComponent(query)}&limit=5`);
+    return await spotifyFetch(`/search?type=track&q=${encodeURIComponent(query)}&limit=20`);
 }
 
 export async function uploadPlaylistCover(playlistId: string, imageBase64: string) {

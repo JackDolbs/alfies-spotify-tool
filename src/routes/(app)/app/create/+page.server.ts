@@ -88,10 +88,27 @@ export const actions = {
 
             // Add tracks if any were selected
             if (trackUrisString) {
-                const trackUris = JSON.parse(trackUrisString);
-                if (trackUris.length > 0) {
-                    console.log('Adding tracks to playlist:', trackUris);
-                    await addTrackToPlaylist(playlist.id, trackUris);
+                try {
+                    const trackUris = JSON.parse(trackUrisString);
+                    console.log('Parsed track URIs:', trackUris);
+                    
+                    // Filter out any invalid URIs
+                    const validTrackUris = trackUris.filter(uri => 
+                        typeof uri === 'string' && 
+                        uri.startsWith('spotify:track:') && 
+                        uri.length > 14
+                    );
+                    
+                    console.log('Valid track URIs:', validTrackUris);
+                    
+                    if (validTrackUris.length > 0) {
+                        console.log('Adding valid tracks to playlist:', validTrackUris);
+                        await addTrackToPlaylist(playlist.id, validTrackUris);
+                    } else {
+                        console.log('No valid track URIs found');
+                    }
+                } catch (parseError) {
+                    console.error('Failed to parse track URIs:', parseError);
                 }
             }
 
