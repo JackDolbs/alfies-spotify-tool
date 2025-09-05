@@ -25,7 +25,7 @@
     let searchQuery = '';
 
     // Sort functionality
-    type SortOption = 'access' | 'creator' | 'newest' | 'recently_updated';
+    type SortOption = 'access' | 'creator' | 'newest';
     type SortDirection = 'asc' | 'desc';
     
     let sortBy: SortOption = 'newest';
@@ -49,8 +49,7 @@
     const sortOptions: { value: SortOption; label: string }[] = [
         { value: 'access', label: 'Access' },
         { value: 'creator', label: 'Creator' },
-        { value: 'newest', label: 'Newest' },
-        { value: 'recently_updated', label: 'Recently Updated' }
+        { value: 'newest', label: 'Newest' }
     ];
 
     function sortPlaylists(playlists: Playlist[]): Playlist[] {
@@ -74,12 +73,6 @@
                     const aIndex = data.playlists.findIndex((p: Playlist) => p.id === a.id);
                     const bIndex = data.playlists.findIndex((p: Playlist) => p.id === b.id);
                     result = aIndex - bIndex;
-                    break;
-                case 'recently_updated':
-                    // Use snapshot_id as proxy for recent updates (lexicographical sort)
-                    const aSnapshot = a.snapshotId || '';
-                    const bSnapshot = b.snapshotId || '';
-                    result = aSnapshot.localeCompare(bSnapshot);
                     break;
                 default:
                     console.log('⚠️ Unknown sort option:', sortBy);
