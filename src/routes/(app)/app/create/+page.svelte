@@ -189,6 +189,9 @@
     // Drag and drop functionality
     let draggedTrackId = null;
     let dragOverIndex = -1;
+    
+    // Inline editing functionality
+    let editingTrackId = null;
 
     function handleDragStart(event, trackId) {
         draggedTrackId = trackId;
@@ -232,6 +235,22 @@
     function handleDragEnd(event) {
         draggedTrackId = null;
         dragOverIndex = -1;
+    }
+
+    function startEditing(trackId) {
+        editingTrackId = trackId;
+    }
+
+    function finishEditing() {
+        editingTrackId = null;
+    }
+
+    function handlePositionEdit(event, trackId, currentPosition) {
+        const newPos = parseInt(event.target.value);
+        if (newPos !== currentPosition && newPos >= 1 && newPos <= selectedTracks.length) {
+            moveTrackToPosition(trackId, newPos);
+        }
+        finishEditing();
     }
 
     function formatDuration(ms: number): string {
@@ -599,31 +618,32 @@
                                         <div class="text-lg text-muted-foreground cursor-grab active:cursor-grabbing" title="Drag to reorder">
                                             ⋮⋮
                                         </div>
-                                        <div class="text-sm text-muted-foreground w-4 text-center font-medium">
-                                            {i + 1}
-                                        </div>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max={selectedTracks.length}
-                                            value={i + 1}
-                                            on:blur={(e) => {
-                                                const newPos = parseInt(e.target.value);
-                                                if (newPos !== i + 1) {
-                                                    moveTrackToPosition(track.id, newPos);
-                                                }
-                                            }}
-                                            on:keydown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    const newPos = parseInt(e.target.value);
-                                                    if (newPos !== i + 1) {
-                                                        moveTrackToPosition(track.id, newPos);
+                                        {#if editingTrackId === track.id}
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max={selectedTracks.length}
+                                                value={i + 1}
+                                                on:blur={(e) => handlePositionEdit(e, track.id, i + 1)}
+                                                on:keydown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        handlePositionEdit(e, track.id, i + 1);
+                                                    } else if (e.key === 'Escape') {
+                                                        finishEditing();
                                                     }
-                                                    e.target.blur();
-                                                }
-                                            }}
-                                            class="w-8 h-6 text-xs text-center border border-input rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                                        />
+                                                }}
+                                                class="w-8 h-6 text-sm text-center border border-input rounded bg-background focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
+                                                autofocus
+                                            />
+                                        {:else}
+                                            <div 
+                                                class="w-8 h-6 text-sm text-center font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded cursor-pointer transition-colors flex items-center justify-center"
+                                                on:click={() => startEditing(track.id)}
+                                                title="Click to edit position"
+                                            >
+                                                {i + 1}
+                                            </div>
+                                        {/if}
                                     </div>
                                     {#if track.imageUrl}
                                         <img 
