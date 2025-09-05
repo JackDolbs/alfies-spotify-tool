@@ -21,7 +21,11 @@ export const load: PageServerLoad = async () => {
                 saves: playlist.followers || 0,
                 owner: playlist.owner?.display_name || playlist.owner?.id || 'Unknown',
                 imageUrl: playlist.images?.[0]?.url || null,
-                canEdit: playlist.owner?.id === currentUser.id
+                canEdit: playlist.owner?.id === currentUser.id,
+                public: playlist.public,
+                collaborative: playlist.collaborative,
+                // Use snapshot_id as a proxy for last modified (changes when playlist is modified)
+                snapshotId: playlist.snapshot_id
             }))
         };
     } catch (error) {
