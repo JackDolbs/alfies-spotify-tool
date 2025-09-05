@@ -122,11 +122,12 @@ export async function getPlaylistTracks(playlistId: string) {
     return await spotifyFetch(`/playlists/${playlistId}/tracks`);
 }
 
-export async function addTrackToPlaylist(playlistId: string, trackUri: string) {
+export async function addTrackToPlaylist(playlistId: string, trackUris: string | string[]) {
+    const uris = Array.isArray(trackUris) ? trackUris : [trackUris];
     return await spotifyFetch(`/playlists/${playlistId}/tracks`, {
         method: 'POST',
         body: JSON.stringify({
-            uris: [trackUri]
+            uris: uris
         })
     });
 }
