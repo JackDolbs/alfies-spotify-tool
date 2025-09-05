@@ -165,6 +165,27 @@
         selectedTracks = selectedTracks.filter(t => t.id !== trackId);
     }
 
+    function moveTrackToPosition(trackId: string, newPosition: number) {
+        // Validate position
+        if (newPosition < 1 || newPosition > selectedTracks.length) {
+            return;
+        }
+        
+        // Find the track to move
+        const trackIndex = selectedTracks.findIndex(t => t.id === trackId);
+        if (trackIndex === -1) return;
+        
+        // Remove track from current position
+        const track = selectedTracks[trackIndex];
+        const newTracks = [...selectedTracks];
+        newTracks.splice(trackIndex, 1);
+        
+        // Insert at new position (convert to 0-based index)
+        newTracks.splice(newPosition - 1, 0, track);
+        
+        selectedTracks = newTracks;
+    }
+
     function formatDuration(ms: number): string {
         const minutes = Math.floor(ms / 60000);
         const seconds = Math.floor((ms % 60000) / 1000);
@@ -518,8 +539,32 @@
                         {:else}
                             {#each selectedTracks as track, i}
                                 <div class="p-4 flex items-center gap-3 hover:bg-muted/30">
-                                    <div class="text-sm text-muted-foreground w-6 text-center font-medium">
-                                        {i + 1}
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-sm text-muted-foreground w-4 text-center font-medium">
+                                            {i + 1}
+                                        </div>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max={selectedTracks.length}
+                                            value={i + 1}
+                                            on:blur={(e) => {
+                                                const newPos = parseInt(e.target.value);
+                                                if (newPos !== i + 1) {
+                                                    moveTrackToPosition(track.id, newPos);
+                                                }
+                                            }}
+                                            on:keydown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const newPos = parseInt(e.target.value);
+                                                    if (newPos !== i + 1) {
+                                                        moveTrackToPosition(track.id, newPos);
+                                                    }
+                                                    e.target.blur();
+                                                }
+                                            }}
+                                            class="w-8 h-6 text-xs text-center border border-input rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                                        />
                                     </div>
                                     {#if track.imageUrl}
                                         <img 
