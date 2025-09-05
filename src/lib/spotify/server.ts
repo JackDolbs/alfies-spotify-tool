@@ -96,7 +96,31 @@ async function spotifyFetch(endpoint: string, options: RequestInit = {}) {
 
 // Playlist Operations
 export async function getUserPlaylists() {
-    return await spotifyFetch('/me/playlists');
+    const response = await spotifyFetch('/me/playlists');
+    
+    // Get detailed data for each playlist to include saves count
+    if (response.items) {
+        const detailedPlaylists = await Promise.all(
+            response.items.map(async (playlist: any) => {
+                try {
+                    const details = await spotifyFetch(`/playlists/${playlist.id}`);
+                    return {
+                        ...playlist,
+                        followers: details.followers?.total || 0
+                    };
+                } catch (error) {
+                    console.error(`Failed to get details for playlist ${playlist.id}:`, error);
+                    return {
+                        ...playlist,
+                        followers: 0
+                    };
+                }
+            })
+        );
+        return { ...response, items: detailedPlaylists };
+    }
+    
+    return response;
 }
 
 export async function createPlaylist(name: string, description?: string) {

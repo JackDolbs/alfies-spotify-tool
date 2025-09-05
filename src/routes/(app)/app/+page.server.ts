@@ -16,7 +16,8 @@ export const load: PageServerLoad = async () => {
                 id: playlist.id,
                 name: playlist.name,
                 trackCount: playlist.tracks?.total || 0,
-                followers: playlist.followers?.total || 0,
+                saves: playlist.followers || 0,
+                owner: playlist.owner?.display_name || playlist.owner?.id || 'Unknown',
                 imageUrl: playlist.images?.[0]?.url || null
             }))
         };

@@ -15,7 +15,7 @@
     
     // Search functionality
     let searchQuery = '';
-    let searchResults: any[] = [];
+    let searchResults: Track[] = [];
     let searching = false;
     
     // Track management state
@@ -27,10 +27,21 @@
     let isAddTracksExpanded = false;
     let addedTracks = new Set<string>(); // Track URIs that have been added
     
+    interface Track {
+        id: string;
+        name: string;
+        artists: string;
+        album: string;
+        duration: number;
+        uri: string;
+        imageUrl: string | null;
+        position: number;
+    }
+
     // Initialize addedTracks with existing playlist tracks
     $: {
         if (data?.playlist?.tracks) {
-            addedTracks = new Set(data.playlist.tracks.map(track => track.uri));
+            addedTracks = new Set(data.playlist.tracks.map((track: Track) => track.uri));
         }
     }
     
@@ -42,6 +53,12 @@
         const minutes = Math.floor(ms / 60000);
         const seconds = Math.floor((ms % 60000) / 1000);
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function formatTotalDuration(ms: number): string {
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        return `${hours} hr ${minutes} min`;
     }
 
     async function handleSearch() {
@@ -93,17 +110,18 @@
                                 const trackTemplate = parsed[3]; // {"id":4,"name":5,"artists":6,...}
                                 
                                 if (Array.isArray(trackIndices) && trackTemplate && typeof trackTemplate === 'object') {
-                                    const tracks = [];
+                                    const tracks: Track[] = [];
                                     
                                     trackIndices.forEach(startIndex => {
-                                        const track = {
+                                        const track: Track = {
                                             id: parsed[trackTemplate.id + startIndex - 3] || '',
                                             name: parsed[trackTemplate.name + startIndex - 3] || '',
                                             artists: parsed[trackTemplate.artists + startIndex - 3] || '',
                                             album: parsed[trackTemplate.album + startIndex - 3] || '',
                                             uri: parsed[trackTemplate.uri + startIndex - 3] || '',
                                             duration: parsed[trackTemplate.duration + startIndex - 3] || 0,
-                                            imageUrl: parsed[trackTemplate.imageUrl + startIndex - 3] || null
+                                            imageUrl: parsed[trackTemplate.imageUrl + startIndex - 3] || null,
+                                            position: 0 // This will be set when added to the playlist
                                         };
                                         
                                         console.log('Reconstructing track from index', startIndex, ':', track);
@@ -212,9 +230,9 @@
                 console.error('❌ HTTP error during add track:', response.status, response.statusText);
                 alert('Failed to add track: HTTP ' + response.status);
             }
-        } catch (error) {
-            console.error('❌ Network error during add track:', error);
-            alert('Failed to add track: ' + error.message);
+                    } catch (error) {
+                console.error('❌ Network error during add track:', error);
+                alert('Failed to add track: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
     }
 
@@ -311,9 +329,9 @@
                 console.error('❌ HTTP error during reorder:', response.status, response.statusText);
                 alert('Failed to reorder track: HTTP ' + response.status);
             }
-        } catch (error) {
-            console.error('❌ Network error during reorder:', error);
-            alert('Failed to reorder track: ' + error.message);
+                    } catch (error) {
+                console.error('❌ Network error during reorder:', error);
+                alert('Failed to reorder track: ' + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             draggedTrackId = null;
             dragOverIndex = -1;
@@ -420,7 +438,7 @@
                 }
             } catch (error) {
                 console.error('❌ Network error during position edit:', error);
-                alert('Failed to reorder track: ' + error.message);
+                alert('Failed to reorder track: ' + (error instanceof Error ? error.message : 'Unknown error'));
             } finally {
                 // Reset the flag after a delay to prevent rapid successive calls
                 setTimeout(() => {
@@ -461,11 +479,13 @@
                 <p class="text-muted-foreground mb-4">{data.playlist.description}</p>
             {/if}
             <div class="flex gap-4 text-sm text-muted-foreground">
-                <span>{data.playlist.tracks.length} tracks</span>
+                <span>By {data.playlist.owner}</span>
                 <span>•</span>
-                <span>{data.playlist.followers} followers</span>
+                <span>{data.playlist.tracks.length} songs</span>
                 <span>•</span>
-                <span>{data.playlist.public ? 'Public' : 'Private'}</span>
+                <span>{formatTotalDuration(data.playlist.totalDuration)}</span>
+                <span>•</span>
+                <span>{data.playlist.followers.toLocaleString()} saves</span>
             </div>
         </div>
     </div>
@@ -610,7 +630,8 @@
                                         on:keydown={(e) => {
                                             if (e.key === 'Enter') {
                                                 e.preventDefault();
-                                                e.target.blur(); // Remove focus first
+                                                const target = e.target as HTMLInputElement;
+                                                target.blur(); // Remove focus first
                                                 handlePositionEdit(e, track.id, i + 1);
                                             } else if (e.key === 'Escape') {
                                                 finishEditing();

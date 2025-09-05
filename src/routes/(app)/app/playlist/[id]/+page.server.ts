@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ params }) => {
                 description: playlist.description,
                 followers: playlist.followers?.total || 0,
                 imageUrl: playlist.images?.[0]?.url || null,
-                public: playlist.public,
+                owner: playlist.owner?.display_name || playlist.owner?.id || 'Unknown',
                 tracks: tracks.items.map((item, index) => ({
                     id: item.track.id,
                     name: item.track.name,
@@ -26,7 +26,8 @@ export const load: PageServerLoad = async ({ params }) => {
                     uri: item.track.uri,
                     imageUrl: item.track.album.images?.[0]?.url || null,
                     position: index
-                }))
+                })),
+                totalDuration: tracks.items.reduce((total, item) => total + item.track.duration_ms, 0)
             }
         };
     } catch (err) {
