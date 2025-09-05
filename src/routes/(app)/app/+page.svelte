@@ -1,6 +1,14 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
     import { Input } from "$lib/components/ui/input";
+    import {
+        Table,
+        TableBody,
+        TableCell,
+        TableHead,
+        TableHeader,
+        TableRow,
+    } from "$lib/components/ui/table";
     import SearchIcon from "@lucide/svelte/icons/search";
     import { goto } from "$app/navigation";
     import type { PageData } from './$types';
@@ -10,9 +18,18 @@
     
     // Search functionality
     let searchQuery = '';
+
+    interface Playlist {
+        id: string;
+        name: string;
+        trackCount: number;
+        saves: number;
+        owner: string;
+        imageUrl: string | null;
+    }
     
     // Filter playlists based on search query
-    $: filteredPlaylists = data.playlists.filter(playlist => 
+    $: filteredPlaylists = data.playlists.filter((playlist: Playlist) => 
         playlist.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 </script>
@@ -46,54 +63,69 @@
     </div>
 
     <!-- Playlists Table -->
-    <div class="overflow-x-auto">
-        <table class="w-full border-collapse">
-            <thead>
-                <tr class="border-b">
-                    <th class="text-left p-4">Name</th>
-                    <th class="text-left p-4">Tracks</th>
-                    <th class="text-left p-4">Saves</th>
-                    <th class="text-left p-4">Creator</th>
-                </tr>
-            </thead>
-            <tbody>
+    <div class="rounded-md border">
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead class="w-[50%]">Name</TableHead>
+                    <TableHead class="text-right">Tracks</TableHead>
+                    <TableHead class="text-right">Saves</TableHead>
+                    <TableHead class="text-right">Creator</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
                 {#each filteredPlaylists as playlist}
-                    <tr 
-                        class="border-b hover:bg-muted/50 cursor-pointer transition-colors"
-                        on:click={() => goto(`/app/playlist/${playlist.id}`)}
-                    >
-                        <td class="p-4">
-                            <div class="flex items-center gap-3">
-                                {#if playlist.imageUrl}
-                                    <img 
-                                        src={playlist.imageUrl} 
-                                        alt={playlist.name}
-                                        class="w-10 h-10 object-cover rounded"
-                                    />
-                                {:else}
-                                    <div class="w-10 h-10 bg-muted rounded flex items-center justify-center">
-                                        🎵
+                    <TableRow class="hover:bg-muted/50">
+                        <td colspan="4" class="p-0">
+                            <button 
+                                type="button"
+                                class="w-full text-left cursor-pointer"
+                                on:click|preventDefault={() => goto(`/app/playlist/${playlist.id}`)}
+                            >
+                                <div class="grid grid-cols-[50%_1fr_1fr_1fr] items-center">
+                                    <div class="p-4">
+                                        <div class="flex items-center gap-3">
+                                            {#if playlist.imageUrl}
+                                                <img 
+                                                    src={playlist.imageUrl} 
+                                                    alt={playlist.name}
+                                                    class="w-10 h-10 object-cover rounded"
+                                                />
+                                            {:else}
+                                                <div class="w-10 h-10 bg-muted rounded flex items-center justify-center">
+                                                    🎵
+                                                </div>
+                                            {/if}
+                                            <span class="font-medium">{playlist.name}</span>
+                                        </div>
                                     </div>
-                                {/if}
-                                {playlist.name}
-                            </div>
+                                    <div class="p-4 text-right">
+                                        {playlist.trackCount} tracks
+                                    </div>
+                                    <div class="p-4 text-right">
+                                        {playlist.saves.toLocaleString()} saves
+                                    </div>
+                                    <div class="p-4 text-right">
+                                        {playlist.owner}
+                                    </div>
+                                </div>
+                            </button>
                         </td>
-                        <td class="p-4">{playlist.trackCount} tracks</td>
-                        <td class="p-4">{playlist.saves.toLocaleString()} saves</td>
-                        <td class="p-4">{playlist.owner}</td>
-                    </tr>
+                    </TableRow>
                 {:else}
-                    <tr>
-                        <td colspan="4" class="p-8 text-center text-muted-foreground">
-                            {#if searchQuery}
-                                No playlists found matching "{searchQuery}"
-                            {:else}
-                                No playlists found
-                            {/if}
-                        </td>
-                    </tr>
+                    <TableRow>
+                        <TableCell class="h-24 text-center" {...{ colspan: 4 }}>
+                            <div class="text-sm text-muted-foreground">
+                                {#if searchQuery}
+                                    No playlists found matching "{searchQuery}"
+                                {:else}
+                                    No playlists found
+                                {/if}
+                            </div>
+                        </TableCell>
+                    </TableRow>
                 {/each}
-            </tbody>
-        </table>
+            </TableBody>
+        </Table>
     </div>
 </div>
