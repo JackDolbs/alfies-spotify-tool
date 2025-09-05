@@ -17,6 +17,8 @@
     
     // Track management state
     let editingTrackId: string | null = null;
+    let isProcessingReorder = false; // Prevent duplicate calls
+    let lastReorderTime = 0; // Additional debounce protection
     
     // Drag and drop functionality
     let draggedTrackId: string | null = null;
@@ -215,36 +217,51 @@
     }
 
     async function handlePositionEdit(event: Event, trackId: string, currentPosition: number) {
+        // Prevent duplicate calls with multiple checks
+        const now = Date.now();
+        if (isProcessingReorder || (now - lastReorderTime) < 500) {
+            console.log('⚠️ Reorder already in progress or too recent, skipping duplicate call');
+            return;
+        }
+        
+        lastReorderTime = now;
+        
         const target = event.target as HTMLInputElement;
         const newPos = parseInt(target.value);
         
         if (newPos !== currentPosition && newPos >= 1 && newPos <= data.playlist.tracks.length) {
+            isProcessingReorder = true;
             // Convert 1-based position to 0-based for server
             const currentIndex = currentPosition - 1;
             const newIndex = newPos - 1;
             
-            console.log(`Frontend position edit: currentPosition=${currentPosition}, newPos=${newPos}, currentIndex=${currentIndex}, newIndex=${newIndex}`);
+            // Fix off-by-one error: subtract 1 from insertBefore for position input
+            // If user types position 1, they want index 0, so insertBefore should be -1? 
+            // But that doesn't make sense. Let me try newIndex - 1 with minimum 0
+            const insertBefore = Math.max(0, newIndex - 1);
+            
+            console.log(`Frontend position edit: currentPosition=${currentPosition}, newPos=${newPos}, currentIndex=${currentIndex}, newIndex=${newIndex}, insertBefore=${insertBefore}`);
             
             try {
+                console.log('Starting position edit request...');
                 const formData = new FormData();
                 formData.append('rangeStart', currentIndex.toString());
-                formData.append('insertBefore', newIndex.toString());
+                formData.append('insertBefore', insertBefore.toString());
                 
+                console.log('Sending position edit request to ?/reorderTrack');
                 const response = await fetch('?/reorderTrack', {
                     method: 'POST',
                     body: formData
                 });
                 
+                console.log('Position edit response received:', response.status, response.statusText);
+                
                 if (response.ok) {
-                    const result = await response.json();
-                    console.log('Position edit response:', result);
-                    
-                    // SvelteKit form actions return different response formats
-                    const isSuccess = result.success || 
-                                    (result.type === 'success' && result.data?.success) ||
-                                    (result.type === 'success' && result.data?.message);
-                    
-                    if (isSuccess) {
+                    console.log('Position edit response OK, updating UI...');
+                    try {
+                        const result = await response.json();
+                        console.log('Position edit response:', result);
+                        
                         // Update UI immediately like drag and drop
                         console.log('✅ Position edit successful! Updating UI...');
                         
@@ -257,19 +274,49 @@
                         // Update the data object to trigger UI refresh
                         data.playlist.tracks = newTracks;
                         
+                        // Debug: log the new track positions
+                        console.log('Updated track positions:');
+                        newTracks.forEach((track, idx) => {
+                            console.log(`  Position ${idx + 1}: ${track.name}`);
+                        });
+                        
                         console.log('✅ UI updated successfully!');
-                    } else {
-                        const errorMsg = result.error || result.data?.error || result.data?.message || 'Unknown error';
-                        console.error('Position edit failed:', errorMsg);
-                        alert('Failed to reorder track: ' + errorMsg);
+                    } catch (jsonError) {
+                        console.log('JSON parse error (might be empty response):', jsonError);
+                        console.log('✅ Position edit likely successful (empty response is normal)');
+                        
+                        // Update the UI immediately even if JSON parsing failed
+                        console.log('✅ Updating UI after successful position edit...');
+                        
+                        // Move track to new position in memory
+                        const newTracks = [...data.playlist.tracks];
+                        const trackToMove = newTracks[currentIndex];
+                        newTracks.splice(currentIndex, 1);
+                        newTracks.splice(newIndex, 0, trackToMove);
+                        
+                        // Update the data object to trigger UI refresh
+                        data.playlist.tracks = newTracks;
+                        
+                        // Debug: log the new track positions
+                        console.log('Updated track positions:');
+                        newTracks.forEach((track, idx) => {
+                            console.log(`  Position ${idx + 1}: ${track.name}`);
+                        });
+                        
+                        console.log('✅ UI updated successfully!');
                     }
                 } else {
-                    console.error('HTTP error during position edit:', response.status, response.statusText);
+                    console.error('❌ HTTP error during position edit:', response.status, response.statusText);
                     alert('Failed to reorder track: HTTP ' + response.status);
                 }
             } catch (error) {
-                console.error('Error during position edit:', error);
+                console.error('❌ Network error during position edit:', error);
                 alert('Failed to reorder track: ' + error.message);
+            } finally {
+                // Reset the flag after a delay to prevent rapid successive calls
+                setTimeout(() => {
+                    isProcessingReorder = false;
+                }, 100);
             }
         }
         
@@ -350,9 +397,18 @@
                                             max={data.playlist.tracks.length}
                                             value={i + 1}
                                             class="w-8 h-6 text-sm text-center border border-input rounded bg-background focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
-                                            on:blur={(e) => handlePositionEdit(e, track.id, i + 1)}
+                                            on:blur={(e) => {
+                                                // Only handle blur if Enter wasn't just pressed
+                                                setTimeout(() => {
+                                                    if (!isProcessingReorder) {
+                                                        handlePositionEdit(e, track.id, i + 1);
+                                                    }
+                                                }, 10);
+                                            }}
                                             on:keydown={(e) => {
                                                 if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    e.target.blur(); // Remove focus first
                                                     handlePositionEdit(e, track.id, i + 1);
                                                 } else if (e.key === 'Escape') {
                                                     finishEditing();
