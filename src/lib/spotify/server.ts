@@ -146,6 +146,71 @@ export async function searchTracks(query: string) {
     return await spotifyFetch(`/search?type=track&q=${encodeURIComponent(query)}&limit=20`);
 }
 
+export async function removeTrackFromPlaylist(playlistId: string, trackUri: string, position?: number) {
+    const body: any = {
+        tracks: [{ uri: trackUri }]
+    };
+    
+    // If position is provided, include it for more precise removal
+    if (position !== undefined) {
+        body.tracks[0].positions = [position];
+    }
+    
+    return await spotifyFetch(`/playlists/${playlistId}/tracks`, {
+        method: 'DELETE',
+        body: JSON.stringify(body)
+    });
+}
+
+export async function reorderPlaylistTracks(playlistId: string, rangeStart: number, insertBefore: number, rangeLength: number = 1) {
+    const body = {
+        range_start: rangeStart,
+        insert_before: insertBefore,
+        range_length: rangeLength
+    };
+    
+    console.log(`Spotify API reorder request:`, body);
+    
+    // Get tokens manually since reorder endpoint returns empty body
+    const { accessToken, refreshToken } = await getSpotifyTokens();
+    
+    // Try the request with the current access token
+    let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+
+    // If unauthorized, try refreshing the token
+    if (response.status === 401) {
+        console.log('Token expired for reorder, refreshing...');
+        const newAccessToken = await refreshSpotifyToken(refreshToken);
+        
+        // Retry the request with the new token
+        response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${newAccessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+    }
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Spotify reorder error (${response.status}):`, errorText);
+        throw new Error(`Failed to reorder playlist tracks: ${response.status} ${response.statusText}`);
+    }
+
+    console.log('Spotify API reorder response: Success (empty body)');
+    // This endpoint returns an empty body on success
+    return { success: true };
+}
+
 export async function uploadPlaylistCover(playlistId: string, imageBase64: string) {
     // Get tokens for manual fetch since we need different headers
     const { accessToken, refreshToken } = await getSpotifyTokens();
