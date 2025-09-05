@@ -316,54 +316,55 @@
         <p class="text-muted-foreground mt-2">Fill in the details below to create your new playlist</p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
         <!-- Left Column: All Cards -->
-        <div class="lg:col-span-3 space-y-6">
+        <div class="lg:col-span-3 space-y-8">
             <!-- Step 1: Basic Details -->
-            <Card>
-                <CardHeader>
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+            <Card class="shadow-sm">
+                <CardHeader class="pb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-medium">
                             1
                         </div>
                         <div>
-                            <CardTitle>Basic Details</CardTitle>
-                            <CardDescription>Set your playlist name and description</CardDescription>
+                            <CardTitle class="text-xl">Basic Details</CardTitle>
+                            <CardDescription class="text-base mt-1">Set your playlist name and description</CardDescription>
                         </div>
                         {#if detailsComplete}
-                            <div class="ml-auto text-green-600">✓</div>
+                            <div class="ml-auto text-green-600 text-lg">✓</div>
                         {/if}
                     </div>
                 </CardHeader>
-                <CardContent class="space-y-4">
-                    <div class="space-y-4">
-                        <div class="space-y-2">
-                            <Label for="name">Playlist Name *</Label>
+                <CardContent class="space-y-6">
+                    <div class="space-y-6">
+                        <div class="space-y-3">
+                            <Label for="name" class="text-base">Playlist Name *</Label>
                             <Input 
                                 id="name"
                                 type="text" 
                                 bind:value={name}
                                 placeholder="My Awesome Playlist"
                                 required
+                                class="h-12 text-lg"
                             />
                         </div>
-                        <div class="space-y-2">
-                            <Label for="description">Description (optional)</Label>
+                        <div class="space-y-3">
+                            <Label for="description" class="text-base">Description (optional)</Label>
                             <Textarea 
                                 id="description"
                                 bind:value={description}
                                 placeholder="What's this playlist about? Describe the mood, genre, or occasion..."
                                 rows={4}
-                                class="resize-none"
+                                class="resize-none text-base p-4"
                             />
                         </div>
-                        <div class="space-y-2">
-                            <Label for="playlist-image">Playlist Image (optional)</Label>
+                        <div class="space-y-3">
+                            <Label for="playlist-image" class="text-base">Playlist Image (optional)</Label>
                             <!-- Context Menu Image preview - bigger and left-aligned -->
                             <ContextMenu.Root>
                                 <ContextMenu.Trigger>
                                     <div 
-                                        class="w-32 h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg overflow-hidden bg-muted/10 cursor-pointer hover:border-muted-foreground/40 transition-colors"
+                                        class="w-40 h-40 border-2 border-dashed border-muted-foreground/25 rounded-lg overflow-hidden bg-muted/10 cursor-pointer hover:border-muted-foreground/40 transition-colors"
                                         on:click={triggerImageUpload}
                                     >
                                         {#if imagePreview}
@@ -374,8 +375,8 @@
                                             />
                                         {:else}
                                             <div class="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                                                <div class="text-3xl mb-1">🖼️</div>
-                                                <div class="text-xs text-center px-2">
+                                                <div class="text-4xl mb-2">🖼️</div>
+                                                <div class="text-sm text-center px-2">
                                                     Click to upload
                                                 </div>
                                             </div>
@@ -422,32 +423,32 @@
             </Card>
 
             <!-- Step 2: Search Tracks -->
-            <Card>
-                <CardHeader>
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+            <Card class="shadow-sm">
+                <CardHeader class="pb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-medium">
                             2
                         </div>
                         <div>
-                            <CardTitle>Search Tracks</CardTitle>
-                            <CardDescription>Find and add tracks to your playlist</CardDescription>
+                            <CardTitle class="text-xl">Search Tracks</CardTitle>
+                            <CardDescription class="text-base mt-1">Find and add tracks to your playlist</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent class="space-y-4">
-                    <div class="flex gap-2">
+                <CardContent class="space-y-6">
+                    <div class="flex gap-3">
                         <input 
                             type="search" 
                             placeholder="Search for tracks..." 
                             bind:value={searchQuery}
                             on:keydown={handleKeydown}
-                            class="flex-1 px-3 py-2 border border-input rounded-md bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            class="flex-1 px-4 py-3 border border-input rounded-md bg-background text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-12"
                         />
                         <button 
                             on:click={handleSearch}
                             disabled={searching || !searchQuery.trim()}
                             type="button"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
+                            class="inline-flex items-center justify-center rounded-md text-base font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-12 px-6 cursor-pointer"
                         >
                             {#if searching}
                                 Searching...
@@ -459,41 +460,41 @@
 
                     <!-- Search Results -->
                     <div class="border rounded-lg overflow-hidden">
-                        <div class="p-3 bg-muted/50 border-b">
-                            <h4 class="font-medium text-sm">Search Results</h4>
+                        <div class="p-4 bg-muted/50 border-b">
+                            <h4 class="font-medium text-base">Search Results</h4>
                         </div>
                         <ScrollArea class="h-80">
                             <div class="divide-y">
                             {#if searching}
-                                <div class="p-4 text-center text-muted-foreground text-sm">
+                                <div class="p-6 text-center text-muted-foreground text-base">
                                     Searching...
                                 </div>
                             {:else if searchResults.length === 0}
-                                <div class="p-4 text-left text-muted-foreground text-sm">
+                                <div class="p-6 text-left text-muted-foreground text-base">
                                     {searchQuery ? 'No tracks found' : 'Search for tracks to add'}
                                 </div>
                             {:else}
                                 {#each searchResults as track}
-                                    <div class="p-3 flex items-center gap-3 hover:bg-muted/30">
+                                    <div class="p-4 flex items-center gap-4 hover:bg-muted/30">
                                         {#if track.imageUrl}
                                             <img 
                                                 src={track.imageUrl} 
                                                 alt={track.name}
-                                                class="w-10 h-10 object-cover rounded"
+                                                class="w-12 h-12 object-cover rounded"
                                             />
                                         {:else}
-                                            <div class="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs">
+                                            <div class="w-12 h-12 bg-muted rounded flex items-center justify-center text-base">
                                                 🎵
                                             </div>
                                         {/if}
                                         <div class="flex-1 min-w-0">
-                                            <div class="font-medium truncate text-sm">{track.name}</div>
-                                            <div class="text-xs text-muted-foreground truncate">{track.artists}</div>
+                                            <div class="font-medium truncate text-base">{track.name}</div>
+                                            <div class="text-sm text-muted-foreground truncate">{track.artists}</div>
                                         </div>
                                         <button
                                             on:click={() => addTrack(track)}
                                             disabled={selectedTracks.find(t => t.id === track.id)}
-                                            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 {selectedTracks.find(t => t.id === track.id) ? 'border border-input bg-background hover:bg-accent hover:text-accent-foreground' : 'bg-primary text-primary-foreground hover:bg-primary/90'} h-9 px-3 cursor-pointer"
+                                            class="inline-flex items-center justify-center rounded-md text-base font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 {selectedTracks.find(t => t.id === track.id) ? 'border border-input bg-background hover:bg-accent hover:text-accent-foreground' : 'bg-primary text-primary-foreground hover:bg-primary/90'} h-10 px-4 cursor-pointer"
                                         >
                                             {selectedTracks.find(t => t.id === track.id) ? 'Added' : 'Add'}
                                         </button>
@@ -507,32 +508,32 @@
             </Card>
 
             <!-- Step 3: Review & Create -->
-            <Card>
-                <CardHeader>
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+            <Card class="shadow-sm">
+                <CardHeader class="pb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-medium">
                             3
                         </div>
                         <div>
-                            <CardTitle>Review & Create</CardTitle>
-                            <CardDescription>Review your playlist and create it</CardDescription>
+                            <CardTitle class="text-xl">Review & Create</CardTitle>
+                            <CardDescription class="text-base mt-1">Review your playlist and create it</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-muted/30 rounded-lg">
                             <div>
-                                <div class="text-sm font-medium">Name</div>
-                                <div class="text-sm text-muted-foreground">{name || 'Not set'}</div>
+                                <div class="text-base font-medium mb-1">Name</div>
+                                <div class="text-base text-muted-foreground">{name || 'Not set'}</div>
                             </div>
                             <div>
-                                <div class="text-sm font-medium">Description</div>
-                                <div class="text-sm text-muted-foreground">{description || 'None'}</div>
+                                <div class="text-base font-medium mb-1">Description</div>
+                                <div class="text-base text-muted-foreground">{description || 'None'}</div>
                             </div>
                             <div>
-                                <div class="text-sm font-medium">Tracks</div>
-                                <div class="text-sm text-muted-foreground">{selectedTracks.length} selected</div>
+                                <div class="text-base font-medium mb-1">Tracks</div>
+                                <div class="text-base text-muted-foreground">{selectedTracks.length} selected</div>
                             </div>
                         </div>
 
@@ -565,7 +566,7 @@
                             <Button 
                                 type="submit" 
                                 disabled={!canCreate || creating}
-                                class="w-full"
+                                class="w-full mt-4"
                                 size="lg"
                             >
                                 {#if creating}
@@ -582,20 +583,20 @@
 
         <!-- Right Column: Selected Tracks -->
         <div class="lg:col-span-2 flex">
-            <Card class="flex-1 flex flex-col">
-                <CardHeader>
-                    <div class="flex items-center gap-2">
+            <Card class="flex-1 flex flex-col shadow-sm">
+                <CardHeader class="pb-0">
+                    <div class="flex items-center gap-3">
                         <div>
-                            <CardTitle class="text-lg">Selected Tracks</CardTitle>
-                            <CardDescription>{selectedTracks.length} tracks added</CardDescription>
+                            <CardTitle class="text-xl">Selected Tracks</CardTitle>
+                            <CardDescription class="text-base mt-0">{selectedTracks.length} tracks added</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent class="p-0 flex-1 overflow-hidden">
                     <div class="divide-y h-full overflow-y-auto">
                         {#if selectedTracks.length === 0}
-                            <div class="h-full p-6">
-                                <div class="space-y-3">
+                            <div class="h-full px-6">
+                                <div class="space-y-1">
                                     <div class="text-base font-medium text-muted-foreground">No tracks added yet</div>
                                     <div class="space-y-2 text-sm text-muted-foreground">
                                         <p>Search and add tracks from the left panel to build your playlist</p>

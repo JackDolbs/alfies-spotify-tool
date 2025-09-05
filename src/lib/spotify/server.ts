@@ -171,7 +171,7 @@ export async function reorderPlaylistTrack(playlistId: string, oldPosition: numb
 }
 
 export async function searchTracks(query: string) {
-    return await spotifyFetch(`/search?type=track&q=${encodeURIComponent(query)}&limit=20`);
+    return await spotifyFetch(`/search?type=track&q=${encodeURIComponent(query)}&limit=50`);
 }
 
 export async function removeTrackFromPlaylist(playlistId: string, trackUri: string, position?: number) {
