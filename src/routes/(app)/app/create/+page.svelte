@@ -186,6 +186,54 @@
         selectedTracks = newTracks;
     }
 
+    // Drag and drop functionality
+    let draggedTrackId = null;
+    let dragOverIndex = -1;
+
+    function handleDragStart(event, trackId) {
+        draggedTrackId = trackId;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/html', event.target);
+    }
+
+    function handleDragOver(event, index) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        dragOverIndex = index;
+    }
+
+    function handleDragLeave(event) {
+        dragOverIndex = -1;
+    }
+
+    function handleDrop(event, dropIndex) {
+        event.preventDefault();
+        
+        if (draggedTrackId === null) return;
+        
+        const dragIndex = selectedTracks.findIndex(t => t.id === draggedTrackId);
+        if (dragIndex === -1 || dragIndex === dropIndex) {
+            draggedTrackId = null;
+            dragOverIndex = -1;
+            return;
+        }
+        
+        // Reorder the tracks
+        const newTracks = [...selectedTracks];
+        const draggedTrack = newTracks[dragIndex];
+        newTracks.splice(dragIndex, 1);
+        newTracks.splice(dropIndex, 0, draggedTrack);
+        
+        selectedTracks = newTracks;
+        draggedTrackId = null;
+        dragOverIndex = -1;
+    }
+
+    function handleDragEnd(event) {
+        draggedTrackId = null;
+        dragOverIndex = -1;
+    }
+
     function formatDuration(ms: number): string {
         const minutes = Math.floor(ms / 60000);
         const seconds = Math.floor((ms % 60000) / 1000);
@@ -538,8 +586,19 @@
                             </div>
                         {:else}
                             {#each selectedTracks as track, i}
-                                <div class="p-4 flex items-center gap-3 hover:bg-muted/30">
+                                <div 
+                                    class="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors {dragOverIndex === i ? 'border-t-2 border-primary' : ''} {draggedTrackId === track.id ? 'opacity-50' : ''}"
+                                    draggable="true"
+                                    on:dragstart={(e) => handleDragStart(e, track.id)}
+                                    on:dragover={(e) => handleDragOver(e, i)}
+                                    on:dragleave={handleDragLeave}
+                                    on:drop={(e) => handleDrop(e, i)}
+                                    on:dragend={handleDragEnd}
+                                >
                                     <div class="flex items-center gap-2">
+                                        <div class="text-lg text-muted-foreground cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                                            ⋮⋮
+                                        </div>
                                         <div class="text-sm text-muted-foreground w-4 text-center font-medium">
                                             {i + 1}
                                         </div>
