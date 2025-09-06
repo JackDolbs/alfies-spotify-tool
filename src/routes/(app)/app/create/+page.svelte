@@ -175,13 +175,18 @@
         const trackIndex = selectedTracks.findIndex(t => t.id === trackId);
         if (trackIndex === -1) return;
         
-        // Remove track from current position
-        const track = selectedTracks[trackIndex];
-        const newTracks = [...selectedTracks];
-        newTracks.splice(trackIndex, 1);
+        // Convert to 0-based index
+        const newIndex = newPosition - 1;
+        if (trackIndex === newIndex) return;
         
-        // Insert at new position (convert to 0-based index)
-        newTracks.splice(newPosition - 1, 0, track);
+        // Create a copy of the array
+        const newTracks = [...selectedTracks];
+        
+        // Remove the track from its current position
+        const [track] = newTracks.splice(trackIndex, 1);
+        
+        // Insert at the correct index in the shortened array
+        newTracks.splice(newIndex, 0, track);
         
         selectedTracks = newTracks;
     }
@@ -247,7 +252,7 @@
 
     function handlePositionEdit(event, trackId, currentPosition) {
         const newPos = parseInt(event.target.value);
-        if (newPos !== currentPosition && newPos >= 1 && newPos <= selectedTracks.length) {
+        if (newPos >= 1 && newPos <= selectedTracks.length) {
             moveTrackToPosition(trackId, newPos);
         }
         finishEditing();
@@ -605,7 +610,7 @@
                                 </div>
                             </div>
                         {:else}
-                            {#each selectedTracks as track, i}
+                            {#each selectedTracks as track, i (track.id)}
                                 <div 
                                     class="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors {dragOverIndex === i ? 'border-t-2 border-primary' : ''} {draggedTrackId === track.id ? 'opacity-50' : ''}"
                                     draggable="true"
