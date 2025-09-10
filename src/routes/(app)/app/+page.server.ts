@@ -1,30 +1,33 @@
 import type { PageServerLoad } from './$types';
-import { getUserPlaylists, getCurrentUser } from '$lib/spotify/server';
+import { getAllPlaylists, getConnectedAccounts, getCurrentUser } from '$lib/spotify/server';
 
 export const load: PageServerLoad = async () => {
     try {
-        const [response, currentUser] = await Promise.all([
-            getUserPlaylists(),
-            getCurrentUser()
-        ]);
-
-        if (!response?.items) {
-            console.error('No items in playlist response:', response);
+        // First get the accounts
+        const accounts = await getConnectedAccounts();
+        if (accounts.length === 0) {
             return { playlists: [] };
         }
+
+        // Use the first account to get user info
+        const [playlists, currentUser] = await Promise.all([
+            getAllPlaylists(),
+            getCurrentUser(accounts[0].id)
+        ]);
         
         return {
-            playlists: response.items.map(playlist => ({
+            playlists: playlists.map(playlist => ({
                 id: playlist.id,
                 name: playlist.name,
                 trackCount: playlist.tracks?.total || 0,
                 saves: playlist.followers || 0,
                 owner: playlist.owner?.display_name || playlist.owner?.id || 'Unknown',
                 imageUrl: playlist.images?.[0]?.url || null,
-                canEdit: playlist.owner?.id === currentUser.id,
+                canEdit: playlist.collaborative || playlist.owner?.id === currentUser.id,
                 public: playlist.public,
                 collaborative: playlist.collaborative,
-                // Use snapshot_id as a proxy for last modified (changes when playlist is modified)
+                accountId: playlist.accountId,
+                accountName: playlist.accountName,
                 snapshotId: playlist.snapshot_id
             }))
         };

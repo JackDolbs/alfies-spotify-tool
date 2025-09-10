@@ -1,7 +1,7 @@
 import PocketBase from 'pocketbase';
 import type { SpotifyTrack, SpotifyPlaylist } from './types';
 
-async function getSpotifyTokens() {
+async function getSpotifyClient(accountId: string) {
     const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
     
     await pb.admins.authWithPassword(
@@ -9,16 +9,18 @@ async function getSpotifyTokens() {
         import.meta.env.VITE_POCKETBASE_ADMIN_PASSWORD
     );
 
-    const record = await pb.collection(import.meta.env.VITE_POCKETBASE_COLLECTION)
-        .getOne(import.meta.env.VITE_POCKETBASE_RECORD_ID);
+    const record = await pb.collection('spotify_accounts').getOne(accountId);
+    console.log('Got Spotify client for account:', { accountId, accountName: record.account_name });
 
     return {
         accessToken: record.spotify_access_token,
-        refreshToken: record.spotify_refresh_token
+        refreshToken: record.spotify_refresh_token,
+        accountName: record.account_name
     };
 }
 
-async function refreshSpotifyToken(refreshToken: string) {
+async function refreshSpotifyToken(accountId: string, refreshToken: string) {
+    console.log('Refreshing token for account:', accountId);
     const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
@@ -34,32 +36,32 @@ async function refreshSpotifyToken(refreshToken: string) {
     });
 
     if (!response.ok) {
-        throw new Error('Failed to refresh token');
+        const error = await response.text();
+        console.error('Token refresh failed:', error);
+        throw new Error('Failed to refresh token: ' + error);
     }
 
     const data = await response.json();
     
-    // Update tokens in PocketBase
+    // Update token in PocketBase
     const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
     await pb.admins.authWithPassword(
         import.meta.env.VITE_POCKETBASE_ADMIN_EMAIL,
         import.meta.env.VITE_POCKETBASE_ADMIN_PASSWORD
     );
 
-    await pb.collection(import.meta.env.VITE_POCKETBASE_COLLECTION).update(
-        import.meta.env.VITE_POCKETBASE_RECORD_ID,
-        {
-            spotify_access_token: data.access_token,
-            spotify_refresh_token: data.refresh_token || refreshToken // Refresh token might not be returned
-        }
-    );
+    await pb.collection('spotify_accounts').update(accountId, {
+        spotify_access_token: data.access_token,
+        spotify_refresh_token: data.refresh_token || refreshToken // Refresh token might not be returned
+    });
 
+    console.log('Token refreshed successfully for account:', accountId);
     return data.access_token;
 }
 
-async function spotifyFetch(endpoint: string, options: RequestInit = {}) {
-    // Get both tokens
-    const { accessToken, refreshToken } = await getSpotifyTokens();
+async function spotifyFetch(accountId: string, endpoint: string, options: RequestInit = {}) {
+    // Get tokens for this account
+    const { accessToken, refreshToken } = await getSpotifyClient(accountId);
     
     // Try the request with the current access token
     let response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
@@ -72,9 +74,9 @@ async function spotifyFetch(endpoint: string, options: RequestInit = {}) {
     });
 
     // If unauthorized, try refreshing the token
-    if (response.status === 401) {
-        console.log('Token expired, refreshing...');
-        const newAccessToken = await refreshSpotifyToken(refreshToken);
+    if (response.status === 401 || response.status === 403) {
+        console.log(`Token expired or invalid for account ${accountId}, refreshing...`);
+        const newAccessToken = await refreshSpotifyToken(accountId, refreshToken);
         
         // Retry the request with the new token
         response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
@@ -88,193 +90,215 @@ async function spotifyFetch(endpoint: string, options: RequestInit = {}) {
     }
 
     if (!response.ok) {
-        throw new Error(`Spotify API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`Spotify API error (${response.status}):`, errorText);
+        throw new Error(`Spotify API error: ${response.statusText} - ${errorText}`);
     }
 
     return response.json();
 }
 
-// Playlist Operations
-export async function getUserPlaylists() {
-    const response = await spotifyFetch('/me/playlists');
+// Get all connected accounts
+export async function getConnectedAccounts() {
+    const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
+    await pb.admins.authWithPassword(
+        import.meta.env.VITE_POCKETBASE_ADMIN_EMAIL,
+        import.meta.env.VITE_POCKETBASE_ADMIN_PASSWORD
+    );
+
+    const accounts = await pb.collection('spotify_accounts').getFullList();
+    console.log('Found connected accounts:', accounts.map(a => ({ id: a.id, name: a.account_name })));
+    return accounts;
+}
+
+// Get playlists for all accounts
+export async function getAllPlaylists() {
+    const accounts = await getConnectedAccounts();
+    console.log(`Getting playlists for ${accounts.length} accounts...`);
     
-    // Get detailed data for each playlist to include saves count
-    if (response.items) {
-        const detailedPlaylists = await Promise.all(
-            response.items.map(async (playlist: any) => {
-                try {
-                    const details = await spotifyFetch(`/playlists/${playlist.id}`);
-                    return {
-                        ...playlist,
-                        followers: details.followers?.total || 0
-                    };
-                } catch (error) {
-                    console.error(`Failed to get details for playlist ${playlist.id}:`, error);
-                    return {
-                        ...playlist,
-                        followers: 0
-                    };
+    const allPlaylists = await Promise.all(
+        accounts.map(async (account) => {
+            try {
+                console.log(`Fetching playlists for account: ${account.account_name}`);
+                
+                // First verify the account's token by getting user profile
+                await spotifyFetch(account.id, '/me');
+                
+                // Then get playlists
+                const response = await spotifyFetch(account.id, '/me/playlists');
+                console.log(`Found ${response.items?.length || 0} playlists for account ${account.account_name}`);
+                
+                // Get detailed data for each playlist
+                if (response.items) {
+                    const detailedPlaylists = await Promise.all(
+                        response.items.map(async (playlist: any) => {
+                            try {
+                                const details = await spotifyFetch(account.id, `/playlists/${playlist.id}`);
+                                return {
+                                    ...playlist,
+                                    followers: details.followers?.total || 0,
+                                    accountId: account.id,
+                                    accountName: account.account_name
+                                };
+                            } catch (error) {
+                                console.error(`Failed to get details for playlist ${playlist.id}:`, error);
+                                return {
+                                    ...playlist,
+                                    followers: 0,
+                                    accountId: account.id,
+                                    accountName: account.account_name
+                                };
+                            }
+                        })
+                    );
+                    return detailedPlaylists;
                 }
-            })
-        );
-        return { ...response, items: detailedPlaylists };
+                return [];
+            } catch (error) {
+                console.error(`Failed to get playlists for account ${account.account_name}:`, error);
+                return [];
+            }
+        })
+    );
+
+    // Flatten the array of arrays into a single array of playlists
+    const flattened = allPlaylists.flat();
+    console.log(`Total playlists found across all accounts: ${flattened.length}`);
+    return flattened;
+}
+
+export async function getCurrentUser(accountId?: string) {
+    // If no accountId provided, use the first available account
+    if (!accountId) {
+        const accounts = await getConnectedAccounts();
+        if (accounts.length === 0) {
+            throw new Error('No connected accounts found');
+        }
+        accountId = accounts[0].id;
+    }
+    return await spotifyFetch(accountId, '/me');
+}
+
+export async function getPlaylistDetails(playlistId: string, accountId?: string) {
+    // If no accountId provided, try to find which account has access to this playlist
+    if (!accountId) {
+        const accounts = await getConnectedAccounts();
+        
+        // Try each account until we find one that can access this playlist
+        for (const account of accounts) {
+            try {
+                const result = await spotifyFetch(account.id, `/playlists/${playlistId}`);
+                return result;
+            } catch (error) {
+                console.log(`Account ${account.account_name} cannot access playlist ${playlistId}:`, error);
+                continue;
+            }
+        }
+        throw new Error(`No account has access to playlist ${playlistId}`);
+    }
+    return await spotifyFetch(accountId, `/playlists/${playlistId}`);
+}
+
+export async function getPlaylistTracks(playlistId: string, accountId?: string) {
+    // If no accountId provided, try to find which account has access to this playlist
+    if (!accountId) {
+        const accounts = await getConnectedAccounts();
+        
+        // Try each account until we find one that can access this playlist
+        for (const account of accounts) {
+            try {
+                const result = await spotifyFetch(account.id, `/playlists/${playlistId}/tracks`);
+                return result;
+            } catch (error) {
+                console.log(`Account ${account.account_name} cannot access playlist ${playlistId} tracks:`, error);
+                continue;
+            }
+        }
+        throw new Error(`No account has access to playlist ${playlistId} tracks`);
+    }
+    return await spotifyFetch(accountId, `/playlists/${playlistId}/tracks`);
+}
+
+export async function addTrackToPlaylist(playlistId: string, trackUris: string | string[], accountId?: string) {
+    // If no accountId provided, try to find which account has access to this playlist
+    if (!accountId) {
+        const accounts = await getConnectedAccounts();
+        
+        // Try each account until we find one that can access this playlist
+        for (const account of accounts) {
+            try {
+                const uris = Array.isArray(trackUris) ? trackUris : [trackUris];
+                const result = await spotifyFetch(account.id, `/playlists/${playlistId}/tracks`, {
+                    method: 'POST',
+                    body: JSON.stringify({ uris })
+                });
+                return result;
+            } catch (error) {
+                console.log(`Account ${account.account_name} cannot add tracks to playlist ${playlistId}:`, error);
+                continue;
+            }
+        }
+        throw new Error(`No account has access to add tracks to playlist ${playlistId}`);
     }
     
-    return response;
-}
-
-export async function createPlaylist(name: string, description?: string) {
-    // First get the user's ID
-    const user = await spotifyFetch('/me');
-    
-    // Create the playlist
-    return await spotifyFetch(`/users/${user.id}/playlists`, {
-        method: 'POST',
-        body: JSON.stringify({
-            name,
-            description,
-            public: false // Keep playlists private by default
-        })
-    });
-}
-
-export async function getCurrentUser() {
-    return await spotifyFetch('/me');
-}
-
-export async function getPlaylistDetails(playlistId: string) {
-    return await spotifyFetch(`/playlists/${playlistId}`);
-}
-
-export async function getPlaylistTracks(playlistId: string) {
-    return await spotifyFetch(`/playlists/${playlistId}/tracks`);
-}
-
-export async function addTrackToPlaylist(playlistId: string, trackUris: string | string[]) {
     const uris = Array.isArray(trackUris) ? trackUris : [trackUris];
-    return await spotifyFetch(`/playlists/${playlistId}/tracks`, {
+    return await spotifyFetch(accountId, `/playlists/${playlistId}/tracks`, {
         method: 'POST',
-        body: JSON.stringify({
-            uris: uris
-        })
+        body: JSON.stringify({ uris })
     });
 }
 
-export async function reorderPlaylistTrack(playlistId: string, oldPosition: number, newPosition: number) {
-    return await spotifyFetch(`/playlists/${playlistId}/tracks`, {
-        method: 'PUT',
-        body: JSON.stringify({
-            range_start: oldPosition,
-            insert_before: newPosition
-        })
-    });
+export async function searchTracks(query: string, accountId?: string) {
+    // If no accountId provided, use the first available account
+    if (!accountId) {
+        const accounts = await getConnectedAccounts();
+        if (accounts.length === 0) {
+            throw new Error('No connected accounts found');
+        }
+        accountId = accounts[0].id;
+    }
+    return await spotifyFetch(accountId, `/search?type=track&q=${encodeURIComponent(query)}&limit=5`);
 }
 
-export async function searchTracks(query: string) {
-    return await spotifyFetch(`/search?type=track&q=${encodeURIComponent(query)}&limit=50`);
-}
-
-export async function removeTrackFromPlaylist(playlistId: string, trackUri: string, position?: number) {
+export async function removeTrackFromPlaylist(playlistId: string, trackUri: string, position?: number, accountId?: string) {
+    // If no accountId provided, try to find which account has access to this playlist
+    if (!accountId) {
+        const accounts = await getConnectedAccounts();
+        
+        // Try each account until we find one that can access this playlist
+        for (const account of accounts) {
+            try {
+                const body: any = {
+                    tracks: [{ uri: trackUri }]
+                };
+                
+                if (position !== undefined) {
+                    body.tracks[0].positions = [position];
+                }
+                
+                const result = await spotifyFetch(account.id, `/playlists/${playlistId}/tracks`, {
+                    method: 'DELETE',
+                    body: JSON.stringify(body)
+                });
+                return result;
+            } catch (error) {
+                console.log(`Account ${account.account_name} cannot remove tracks from playlist ${playlistId}:`, error);
+                continue;
+            }
+        }
+        throw new Error(`No account has access to remove tracks from playlist ${playlistId}`);
+    }
+    
     const body: any = {
         tracks: [{ uri: trackUri }]
     };
     
-    // If position is provided, include it for more precise removal
     if (position !== undefined) {
         body.tracks[0].positions = [position];
     }
     
-    return await spotifyFetch(`/playlists/${playlistId}/tracks`, {
+    return await spotifyFetch(accountId, `/playlists/${playlistId}/tracks`, {
         method: 'DELETE',
         body: JSON.stringify(body)
     });
-}
-
-export async function reorderPlaylistTracks(playlistId: string, rangeStart: number, insertBefore: number, rangeLength: number = 1) {
-    const body = {
-        range_start: rangeStart,
-        insert_before: insertBefore,
-        range_length: rangeLength
-    };
-    
-    console.log(`Spotify API reorder request:`, body);
-    
-    // Get tokens manually since reorder endpoint returns empty body
-    const { accessToken, refreshToken } = await getSpotifyTokens();
-    
-    // Try the request with the current access token
-    let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-    });
-
-    // If unauthorized, try refreshing the token
-    if (response.status === 401) {
-        console.log('Token expired for reorder, refreshing...');
-        const newAccessToken = await refreshSpotifyToken(refreshToken);
-        
-        // Retry the request with the new token
-        response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${newAccessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        });
-    }
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Spotify reorder error (${response.status}):`, errorText);
-        throw new Error(`Failed to reorder playlist tracks: ${response.status} ${response.statusText}`);
-    }
-
-    console.log('Spotify API reorder response: Success (empty body)');
-    // This endpoint returns an empty body on success
-    return { success: true };
-}
-
-export async function uploadPlaylistCover(playlistId: string, imageBase64: string) {
-    // Get tokens for manual fetch since we need different headers
-    const { accessToken, refreshToken } = await getSpotifyTokens();
-    
-    // Try the request with the current access token
-    let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/images`, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'image/jpeg'
-        },
-        body: imageBase64
-    });
-
-    // If unauthorized, try refreshing the token
-    if (response.status === 401) {
-        console.log('Token expired for image upload, refreshing...');
-        const newAccessToken = await refreshSpotifyToken(refreshToken);
-        
-        // Retry the request with the new token
-        response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/images`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${newAccessToken}`,
-                'Content-Type': 'image/jpeg'
-            },
-            body: imageBase64
-        });
-    }
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Spotify image upload error (${response.status}):`, errorText);
-        throw new Error(`Failed to upload playlist cover: ${response.status} ${response.statusText}`);
-    }
-
-    // This endpoint returns no content on success
-    return true;
 }

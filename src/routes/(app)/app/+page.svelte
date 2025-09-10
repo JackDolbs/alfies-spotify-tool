@@ -1,14 +1,5 @@
+<!-- src/routes/(app)/app/+page.svelte -->
 <script lang="ts">
-    import { Button } from "$lib/components/ui/button";
-    import { Input } from "$lib/components/ui/input";
-    import {
-        Table,
-        TableBody,
-        TableCell,
-        TableHead,
-        TableHeader,
-        TableRow,
-    } from "$lib/components/ui/table";
     import LockIcon from "@lucide/svelte/icons/lock";
     import UnlockIcon from "@lucide/svelte/icons/unlock";
     import SearchIcon from "@lucide/svelte/icons/search";
@@ -20,45 +11,39 @@
 
     export let data: PageData;
     
+    // Debug logging
+    console.log('🔍 App page data:', data);
+    console.log('🔍 Playlists count:', data?.playlists?.length || 0);
     
     // Search functionality
     let searchQuery = '';
 
     // Sort functionality
-    type SortOption = 'access' | 'creator' | 'newest';
+    type SortOption = 'access' | 'creator' | 'newest' | 'account';
     type SortDirection = 'asc' | 'desc';
     
     let sortBy: SortOption = 'newest';
     let sortDirection: SortDirection = 'desc';
     let showSortDropdown = false;
-    let filteredAndSortedPlaylists: Playlist[] = [];
-
-    interface Playlist {
-        id: string;
-        name: string;
-        trackCount: number;
-        saves: number;
-        owner: string;
-        imageUrl: string | null;
-        canEdit?: boolean;
-        public?: boolean;
-        collaborative?: boolean;
-        snapshotId?: string;
-    }
+    let filteredAndSortedPlaylists: any[] = [];
 
     const sortOptions: { value: SortOption; label: string }[] = [
+        { value: 'account', label: 'Account' },
         { value: 'access', label: 'Access' },
         { value: 'creator', label: 'Creator' },
         { value: 'newest', label: 'Newest' }
     ];
 
-    function sortPlaylists(playlists: Playlist[]): Playlist[] {
+    function sortPlaylists(playlists: any[]): any[] {
         console.log(`🔄 Sorting ${playlists.length} playlists by ${sortBy} (${sortDirection})`);
         
         const sorted = [...playlists].sort((a, b) => {
             let result = 0;
 
             switch (sortBy) {
+                case 'account':
+                    result = a.accountName.toLowerCase().localeCompare(b.accountName.toLowerCase());
+                    break;
                 case 'access':
                     // Sort by access level: editable playlists first, then public/private
                     const aAccess = getAccessLevel(a);
@@ -70,8 +55,8 @@
                     break;
                 case 'newest':
                     // Use the original order from Spotify as proxy for creation order (newest first in desc)
-                    const aIndex = data.playlists.findIndex((p: Playlist) => p.id === a.id);
-                    const bIndex = data.playlists.findIndex((p: Playlist) => p.id === b.id);
+                    const aIndex = (data?.playlists || []).findIndex((p: any) => p.id === a.id);
+                    const bIndex = (data?.playlists || []).findIndex((p: any) => p.id === b.id);
                     result = aIndex - bIndex;
                     break;
                 default:
@@ -83,11 +68,10 @@
             return finalResult;
         });
         
-        console.log('✅ Sorted result:', sorted.slice(0, 3).map(p => `${p.name} (${p.owner})`));
         return sorted;
     }
 
-    function getAccessLevel(playlist: Playlist): string {
+    function getAccessLevel(playlist: any): string {
         if (playlist.canEdit) return '1-editable';
         if (playlist.collaborative) return '2-collaborative';
         if (playlist.public) return '3-public';
@@ -104,6 +88,30 @@
             sortDirection = 'asc';
         }
         showSortDropdown = false;
+        updateFilteredPlaylists();
+    }
+
+    function handleRowClick(playlistId: string) {
+        console.log('🎯 Row clicked, navigating to playlist:', playlistId);
+        goto(`/app/playlist/${playlistId}`);
+    }
+
+    function updateFilteredPlaylists() {
+        console.log('🔍 Updating filtered playlists:', { 
+            dataPlaylists: data?.playlists?.length, 
+            searchQuery, 
+            sortBy, 
+            sortDirection 
+        });
+        
+        const playlists = data?.playlists || [];
+        const filtered = playlists.filter((playlist: any) => 
+            !searchQuery || 
+            playlist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            playlist.accountName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        filteredAndSortedPlaylists = sortPlaylists(filtered);
+        console.log('🔍 Filtered and sorted:', filteredAndSortedPlaylists.length);
     }
 
     // Close dropdown when clicking outside
@@ -112,7 +120,10 @@
         const sortDropdown = document.querySelector('[data-sort-dropdown]');
         const sortButton = document.querySelector('[data-sort-button]');
         
-        if (showSortDropdown && sortDropdown && sortButton) {
+        // Only handle this if the dropdown is actually open
+        if (!showSortDropdown) return;
+        
+        if (sortDropdown && sortButton) {
             if (!sortDropdown.contains(target) && !sortButton.contains(target)) {
                 showSortDropdown = false;
             }
@@ -121,26 +132,28 @@
 
     onMount(() => {
         document.addEventListener('click', handleClickOutside);
+        console.log('🔍 Component mounted with data:', data);
+        updateFilteredPlaylists();
         return () => {
             document.removeEventListener('click', handleClickOutside);
         };
     });
     
-    // Filter and sort playlists - reactive to search, sort, and data changes
-    $: {
-        console.log('🔥 Reactive statement triggered!', { sortBy, sortDirection, searchQuery });
-        const filtered = data.playlists.filter((playlist: Playlist) => 
-            playlist.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        filteredAndSortedPlaylists = sortPlaylists(filtered);
-        console.log('🔥 Updated filteredAndSortedPlaylists:', filteredAndSortedPlaylists.map((p: Playlist) => p.name));
+    // Watch for changes and update
+    $: if (data?.playlists || searchQuery !== undefined) {
+        updateFilteredPlaylists();
     }
 </script>
 
 <div class="container mx-auto p-4">
     <div class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold">Your Playlists</h1>
-        <Button href="/app/create">Create New Playlist</Button>
+        <a 
+            href="/app/create"
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+        >
+            Create New Playlist
+        </a>
     </div>
 
     <!-- Search and Sort Bar -->
@@ -148,14 +161,14 @@
         <div class="flex gap-3">
             <!-- Search Input -->
             <div class="relative flex-1">
-                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <SearchIcon class="h-4 w-4 text-muted-foreground" />
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
+                    <SearchIcon class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 </div>
-                <Input 
+                <input 
                     type="search"
-                    placeholder="Search playlists by name..."
+                    placeholder="Search playlists by name or account..."
                     bind:value={searchQuery}
-                    class="w-full pl-10"
+                    class="relative border-input bg-background selection:bg-primary dark:bg-input/30 selection:text-primary-foreground ring-offset-background placeholder:text-muted-foreground shadow-xs flex h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base outline-none transition-[color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive pl-10"
                 />
             </div>
             
@@ -211,76 +224,88 @@
 
     <!-- Playlists Table -->
     <div class="rounded-md border">
-        <Table>
-            <TableHeader>
-                <TableRow>
-                                                    <TableHead class="w-[50%]">Name</TableHead>
-                                <TableHead class="text-right">Tracks</TableHead>
-                                <TableHead class="text-right">Saves</TableHead>
-                                <TableHead class="text-right">Creator</TableHead>
-                                <TableHead class="w-[48px] text-center">Access</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {#each filteredAndSortedPlaylists as playlist (playlist.id)}
-                    <TableRow class="hover:bg-muted/50">
-                        <td colspan="5" class="p-0">
-                            <button 
-                                type="button"
-                                class="w-full text-left cursor-pointer"
-                                on:click|preventDefault={() => goto(`/app/playlist/${playlist.id}`)}
-                            >
-                                                                           <div class="grid grid-cols-[50%_1fr_1fr_1fr_48px] items-center gap-4">
-                                    <div class="p-4">
-                                        <div class="flex items-center gap-3">
-                                            {#if playlist.imageUrl}
-                                                <img 
-                                                    src={playlist.imageUrl} 
-                                                    alt={playlist.name}
-                                                    class="w-10 h-10 object-cover rounded"
-                                                />
-                                            {:else}
-                                                <div class="w-10 h-10 bg-muted rounded flex items-center justify-center">
-                                                    🎵
-                                                </div>
-                                            {/if}
-                                            <span class="font-medium">{playlist.name}</span>
+        <div class="relative w-full overflow-x-auto">
+            <table class="w-full caption-bottom text-sm">
+                <thead class="[&_tr]:border-b">
+                    <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Name</th>
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Account</th>
+                        <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Tracks</th>
+                        <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Saves</th>
+                        <th class="h-12 px-4 text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Creator</th>
+                        <th class="h-12 px-4 text-center align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">Access</th>
+                    </tr>
+                </thead>
+                <tbody class="[&_tr:last-child]:border-0">
+                    {#each filteredAndSortedPlaylists as playlist (`${playlist.id}-${playlist.accountId}`)}
+                        <!-- svelte-ignore a11y-click-events-have-key-events -->
+                        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+                        <tr 
+                            class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
+                            data-playlist-row
+                            data-playlist-id={playlist.id}
+                            on:click={() => handleRowClick(playlist.id)}
+                        >
+                            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 w-[40%]">
+                                <div class="flex items-center gap-3">
+                                    {#if playlist.imageUrl}
+                                        <img 
+                                            src={playlist.imageUrl} 
+                                            alt={playlist.name}
+                                            class="w-10 h-10 object-cover rounded"
+                                        />
+                                    {:else}
+                                        <div class="w-10 h-10 bg-muted rounded flex items-center justify-center">
+                                            🎵
                                         </div>
-                                    </div>
-                                    <div class="p-4 text-right">
-                                        {playlist.trackCount} tracks
-                                    </div>
-                                    <div class="p-4 text-right">
-                                        {playlist.saves.toLocaleString()} saves
-                                    </div>
-                                                                               <div class="p-4 text-right">
-                                               {playlist.owner}
-                                           </div>
-                                           <div class="p-4 flex items-center justify-center">
-                                               {#if playlist.canEdit}
-                                                   <UnlockIcon class="h-4 w-4 text-green-500" />
-                                               {:else}
-                                                   <LockIcon class="h-4 w-4 text-orange-500" />
-                                               {/if}
-                                           </div>
+                                    {/if}
+                                    <a 
+                                        href="/app/playlist/{playlist.id}"
+                                        class="font-medium hover:underline text-foreground"
+                                        on:click={(e) => {
+                                            e.preventDefault();
+                                            handleRowClick(playlist.id);
+                                        }}
+                                    >
+                                        {playlist.name}
+                                    </a>
                                 </div>
-                            </button>
-                        </td>
-                    </TableRow>
-                {:else}
-                    <TableRow>
-                        <TableCell class="h-24 text-center" {...{ colspan: 5 }}>
-                            <div class="text-sm text-muted-foreground">
-                                {#if searchQuery}
-                                    No playlists found matching "{searchQuery}"
+                            </td>
+                            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 w-[20%]">
+                                <span class="text-sm text-muted-foreground">{playlist.accountName}</span>
+                            </td>
+                            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+                                {playlist.trackCount} tracks
+                            </td>
+                            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+                                {playlist.saves.toLocaleString()} saves
+                            </td>
+                            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
+                                {playlist.owner}
+                            </td>
+                            <td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-center">
+                                {#if playlist.canEdit}
+                                    <UnlockIcon class="h-4 w-4 text-green-500 mx-auto" />
                                 {:else}
-                                    No playlists found
+                                    <LockIcon class="h-4 w-4 text-orange-500 mx-auto" />
                                 {/if}
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                {/each}
-            </TableBody>
-        </Table>
+                            </td>
+                        </tr>
+                    {:else}
+                        <tr>
+                            <td class="h-24 p-4 align-middle [&:has([role=checkbox])]:pr-0 text-center" colspan="6">
+                                <div class="text-sm text-muted-foreground">
+                                    {#if searchQuery}
+                                        No playlists found matching "{searchQuery}"
+                                    {:else}
+                                        No playlists found
+                                    {/if}
+                                </div>
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
