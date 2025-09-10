@@ -257,7 +257,7 @@ export async function searchTracks(query: string, accountId?: string) {
         }
         accountId = accounts[0].id;
     }
-    return await spotifyFetch(accountId, `/search?type=track&q=${encodeURIComponent(query)}&limit=5`);
+    return await spotifyFetch(accountId, `/search?type=track&q=${encodeURIComponent(query)}&limit=20`);
 }
 
 export async function removeTrackFromPlaylist(playlistId: string, trackUri: string, position?: number, accountId?: string) {
